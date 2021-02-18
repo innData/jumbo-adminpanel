@@ -20,7 +20,10 @@
 
 Route::prefix('driver')->group(function () {
     Route::post('login', 'API\Driver\UserAPIController@login');
+    Route::post('checkuser', 'API\Driver\UserAPIController@checkuser');
     Route::post('register', 'API\Driver\UserAPIController@register');
+    Route::post('deviceinformation', 'API\Driver\UserAPIController@deviceinformation');
+    Route::post('order_verification_code', 'API\Driver\UserAPIController@order_verification_code');
     Route::post('send_reset_link_email', 'API\UserAPIController@sendResetLinkEmail');
     Route::get('user', 'API\Driver\UserAPIController@user');
     Route::get('logout', 'API\Driver\UserAPIController@logout');
@@ -29,7 +32,9 @@ Route::prefix('driver')->group(function () {
 
 Route::prefix('manager')->group(function () {
     Route::post('login', 'API\Manager\UserAPIController@login');
+    Route::post('checkuser', 'API\Manager\UserAPIController@checkuser');
     Route::post('register', 'API\Manager\UserAPIController@register');
+    Route::post('deviceinformation', 'API\Manager\UserAPIController@deviceinformation');
     Route::post('send_reset_link_email', 'API\UserAPIController@sendResetLinkEmail');
     Route::get('user', 'API\Manager\UserAPIController@user');
     Route::get('logout', 'API\Manager\UserAPIController@logout');
@@ -38,6 +43,11 @@ Route::prefix('manager')->group(function () {
 
 
 Route::post('login', 'API\UserAPIController@login');
+Route::post('checkuser', 'API\UserAPIController@checkuser');
+Route::post('order_status_by_user_id', 'API\UserAPIController@order_status_by_user_id');
+Route::post('deviceinformation', 'API\UserAPIController@deviceinformation');
+Route::post('taxinformation', 'API\UserAPIController@taxinformation');
+Route::get('getpromo', 'API\UserAPIController@getpromo');
 Route::post('register', 'API\UserAPIController@register');
 Route::post('send_reset_link_email', 'API\UserAPIController@sendResetLinkEmail');
 Route::get('user', 'API\UserAPIController@user');

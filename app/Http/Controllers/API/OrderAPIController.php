@@ -15,12 +15,14 @@ use App\Criteria\Orders\OrdersOfUserCriteria;
 use App\Events\OrderChangedEvent;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\OrderStatus;
 use App\Notifications\AssignedOrder;
 use App\Notifications\NewOrder;
 use App\Notifications\StatusChangedOrder;
 use App\Repositories\CartRepository;
 use App\Repositories\NotificationRepository;
 use App\Repositories\OrderRepository;
+use App\Repositories\OrderStatusRepository;
 use App\Repositories\PaymentRepository;
 use App\Repositories\ProductOrderRepository;
 use App\Repositories\UserRepository;
@@ -52,6 +54,7 @@ class OrderAPIController extends Controller
     private $paymentRepository;
     /** @var  NotificationRepository */
     private $notificationRepository;
+    private $orderStatusRepository;
 
     /**
      * OrderAPIController constructor.
@@ -62,7 +65,7 @@ class OrderAPIController extends Controller
      * @param NotificationRepository $notificationRepo
      * @param UserRepository $userRepository
      */
-    public function __construct(OrderRepository $orderRepo, ProductOrderRepository $productOrderRepository, CartRepository $cartRepo, PaymentRepository $paymentRepo, NotificationRepository $notificationRepo, UserRepository $userRepository)
+    public function __construct(OrderRepository $orderRepo, ProductOrderRepository $productOrderRepository, CartRepository $cartRepo, PaymentRepository $paymentRepo, NotificationRepository $notificationRepo, UserRepository $userRepository, OrderStatusRepository $orderStatusRepo)
     {
         $this->orderRepository = $orderRepo;
         $this->productOrderRepository = $productOrderRepository;
@@ -70,6 +73,7 @@ class OrderAPIController extends Controller
         $this->userRepository = $userRepository;
         $this->paymentRepository = $paymentRepo;
         $this->notificationRepository = $notificationRepo;
+        $this->orderStatusRepository = $orderStatusRepo;
     }
 
     /**
@@ -90,7 +94,7 @@ class OrderAPIController extends Controller
             return $this->sendError($e->getMessage());
         }
         $orders = $this->orderRepository->all();
-
+        
         return $this->sendResponse($orders->toArray(), 'Orders retrieved successfully');
     }
 
@@ -123,6 +127,11 @@ class OrderAPIController extends Controller
 
 
     }
+    
+    
+    
+     
+    
 
     /**
      * Store a newly created Order in storage.
@@ -213,12 +222,14 @@ class OrderAPIController extends Controller
         $input = $request->all();
         $amount = 0;
         try {
+            $request->merge(['order_verification_code' => rand ( 100000 , 999999)]);
             $order = $this->orderRepository->create(
-                $request->only('user_id', 'order_status_id', 'tax', 'delivery_address_id', 'delivery_fee', 'hint')
+                $request->only('user_id', 'order_status_id', 'tax', 'delivery_address_id', 'delivery_fee', 'hint', 'order_verification_code')
             );
             Log::info($input['products']);
             foreach ($input['products'] as $productOrder) {
                 $productOrder['order_id'] = $order->id;
+                
                 $amount += $productOrder['price'] * $productOrder['quantity'];
                 $this->productOrderRepository->create($productOrder);
             }
@@ -233,7 +244,7 @@ class OrderAPIController extends Controller
             ]);
 
             $this->orderRepository->update(['payment_id' => $payment->id], $order->id);
-
+            
             $this->cartRepository->deleteWhere(['user_id' => $order->user_id]);
 
             Notification::send($order->productOrders[0]->product->market->users, new NewOrder($order));

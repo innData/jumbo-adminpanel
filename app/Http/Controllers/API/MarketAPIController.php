@@ -69,11 +69,7 @@ class MarketAPIController extends Controller
             $this->marketRepository->pushCriteria(new RequestCriteria($request));
             $this->marketRepository->pushCriteria(new LimitOffsetCriteria($request));
             $this->marketRepository->pushCriteria(new MarketsOfFieldsCriteria($request));
-            if ($request->has('popular')) {
-                $this->marketRepository->pushCriteria(new PopularCriteria($request));
-            } else {
-                $this->marketRepository->pushCriteria(new NearCriteria($request));
-            }
+            
             $this->marketRepository->pushCriteria(new ActiveCriteria());
             $markets = $this->marketRepository->all();
 
