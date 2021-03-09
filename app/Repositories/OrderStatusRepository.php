@@ -20,7 +20,8 @@ class OrderStatusRepository extends BaseRepository
      * @var array
      */
     protected $fieldSearchable = [
-        'status'
+        'status',
+        'id'
     ];
 
     /**

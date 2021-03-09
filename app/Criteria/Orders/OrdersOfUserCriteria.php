@@ -56,6 +56,9 @@ class OrdersOfUserCriteria implements CriteriaInterface
         } else if (auth()->user()->hasRole('client')) {
             return $model->where('orders.user_id', $this->userId)
                 ->groupBy('orders.id');
+            //  return $model->join("order_statuses", "orders.order_status_id", "=", "order_statuses.id")
+            // ->where('orders.user_id', $this->userId)
+            //     ->groupBy('orders.id');
         } else if (auth()->user()->hasRole('driver')) {
             return $model->newQuery()->where('orders.driver_id', $this->userId)
                 ->groupBy('orders.id');

@@ -23,11 +23,13 @@ class UserRepository extends BaseRepository
         'id',
         'name',
         'email',
+        'mobile',
         'password',
         'api_token',
         'store_id',
         'role_id',
-        'remember_token'
+        'remember_token',
+        'role'
     ];
 
     /**

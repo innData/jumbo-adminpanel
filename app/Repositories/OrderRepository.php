@@ -20,6 +20,7 @@ class OrderRepository extends BaseRepository
      * @var array
      */
     protected $fieldSearchable = [
+        'id',
         'user_id',
         'order_status_id',
         'tax',
@@ -28,6 +29,9 @@ class OrderRepository extends BaseRepository
         'delivery_address_id',
         'active',
         'driver_id',
+        'order_verification_code',
+        'tax_id',
+        'slot_id'
     ];
 
     /**

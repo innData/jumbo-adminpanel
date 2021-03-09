@@ -15,15 +15,20 @@ use App\Criteria\Orders\OrdersOfUserCriteria;
 use App\Events\OrderChangedEvent;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\OrderStatus;
+use App\Models\DeliverySlot;
 use App\Notifications\AssignedOrder;
 use App\Notifications\NewOrder;
 use App\Notifications\StatusChangedOrder;
 use App\Repositories\CartRepository;
 use App\Repositories\NotificationRepository;
 use App\Repositories\OrderRepository;
+use App\Repositories\OrderStatusRepository;
 use App\Repositories\PaymentRepository;
 use App\Repositories\ProductOrderRepository;
+use App\Repositories\DeliverySlotRepository;
 use App\Repositories\UserRepository;
+use App\Repositories\TaxInformationRepository;
 use Flash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -52,6 +57,9 @@ class OrderAPIController extends Controller
     private $paymentRepository;
     /** @var  NotificationRepository */
     private $notificationRepository;
+    private $orderStatusRepository;
+    private $taxinfoRepository;
+    private $deliveryslotRepository;
 
     /**
      * OrderAPIController constructor.
@@ -62,14 +70,17 @@ class OrderAPIController extends Controller
      * @param NotificationRepository $notificationRepo
      * @param UserRepository $userRepository
      */
-    public function __construct(OrderRepository $orderRepo, ProductOrderRepository $productOrderRepository, CartRepository $cartRepo, PaymentRepository $paymentRepo, NotificationRepository $notificationRepo, UserRepository $userRepository)
+    public function __construct(OrderRepository $orderRepo, ProductOrderRepository $productOrderRepository, CartRepository $cartRepo, PaymentRepository $paymentRepo, NotificationRepository $notificationRepo, UserRepository $userRepository, OrderStatusRepository $orderStatusRepo,TaxInformationRepository $taxinfoRepo,DeliverySlotRepository $deliveryslotRepo)
     {
         $this->orderRepository = $orderRepo;
         $this->productOrderRepository = $productOrderRepository;
-        $this->cartRepository = $cartRepo;
+        $this->cartRepository = $cartRepo; 
         $this->userRepository = $userRepository;
         $this->paymentRepository = $paymentRepo;
         $this->notificationRepository = $notificationRepo;
+        $this->orderStatusRepository = $orderStatusRepo;
+        $this->taxinfoRepository = $taxinfoRepo;
+        $this->deliveryslotRepository = $deliveryslotRepo;
     }
 
     /**
@@ -89,9 +100,16 @@ class OrderAPIController extends Controller
         } catch (RepositoryException $e) {
             return $this->sendError($e->getMessage());
         }
-        $orders = $this->orderRepository->all();
-
-        return $this->sendResponse($orders->toArray(), 'Orders retrieved successfully');
+        $order_array = $this->orderRepository->all();
+          foreach($order_array as $single_order){
+                $temp = $this->taxinfoRepository->findByField('id',$single_order->tax_id)->first();
+                $single_order['tax_info'] = $temp;
+                $temp1 = $this->deliveryslotRepository->findByField('id',$single_order->slot_id);
+                $single_order->slot_timing = $temp1[0]->slot_timing;
+            }
+        
+         return $this->sendResponse($order_array->makeHidden('tax_id')->makeHidden('slot_id')->toArray(), 'Orders retrieved successfully');
+        // return $this->sendResponse($temp1->toArray(), 'Orders retrieved successfully');
     }
 
     /**
@@ -112,17 +130,48 @@ class OrderAPIController extends Controller
             } catch (RepositoryException $e) {
                 return $this->sendError($e->getMessage());
             }
-            $order = $this->orderRepository->findWithoutFail($id);
-        }
+            //$new_id=substr($id,3,4);
+            $order_array = $this->orderRepository->findWithoutFail($id);
+            //$order_array = $this->orderRepository->findByField('id',$id);
 
-        if (empty($order)) {
+            $temp = $this->taxinfoRepository->findByField('id',$order_array->tax_id)->first();
+            $order_array['tax_info'] = $temp;
+            
+            $temp1 = $this->deliveryslotRepository->findByField('id',$order_array->slot_id)->first();
+            $order_array['slot_info'] = $temp1;
+            
+            
+            
+        }
+        
+        
+
+        if (empty($order_array)) {
             return $this->sendError('Order not found');
         }
 
-        return $this->sendResponse($order->toArray(), 'Order retrieved successfully');
+        return $this->sendResponse($order_array->makeHidden('tax_id')->makeHidden('slot_id'), 'Order retrieved successfully');
 
 
     }
+    
+       public  function get_slots()
+        {   
+            try{    
+                    $slotinfo = $this->deliveryslotRepository->all();
+                    
+                    // $temp = implode(", ",$taxinfos->toArray());
+                    
+                    return $this->sendResponse($slotinfo->toArray(), 'Delivery Slot retrieved successfully');
+                }
+            catch (\Exception $e) {
+            return $this->sendError($e->getMessage(), 401);
+            }
+
+        }
+    
+     
+    
 
     /**
      * Store a newly created Order in storage.
@@ -213,12 +262,16 @@ class OrderAPIController extends Controller
         $input = $request->all();
         $amount = 0;
         try {
+            $request->merge(['tax_id'=> $request->input('tax_id')]);
+             $request->merge(['slot_id'=> $request->input('slot_id')]);
+             $request->merge(['order_verification_code' => rand ( 100000 , 999999)]);
             $order = $this->orderRepository->create(
-                $request->only('user_id', 'order_status_id', 'tax', 'delivery_address_id', 'delivery_fee', 'hint')
+                $request->only('user_id', 'order_status_id', 'tax', 'delivery_address_id', 'delivery_fee', 'hint', 'order_verification_code','tax_id','slot_id')
             );
             Log::info($input['products']);
             foreach ($input['products'] as $productOrder) {
                 $productOrder['order_id'] = $order->id;
+                
                 $amount += $productOrder['price'] * $productOrder['quantity'];
                 $this->productOrderRepository->create($productOrder);
             }
@@ -233,7 +286,7 @@ class OrderAPIController extends Controller
             ]);
 
             $this->orderRepository->update(['payment_id' => $payment->id], $order->id);
-
+            
             $this->cartRepository->deleteWhere(['user_id' => $order->user_id]);
 
             Notification::send($order->productOrders[0]->product->market->users, new NewOrder($order));

@@ -50,9 +50,13 @@ class User extends Authenticatable implements HasMedia
     public $fillable = [
         'name',
         'email',
+        'mobile',
+        'is_social', 
         'password',
         'api_token',
+        'uid',
         'device_token',
+        'role'
     ];
     /**
      * The attributes that should be casted to native types.
@@ -62,10 +66,14 @@ class User extends Authenticatable implements HasMedia
     protected $casts = [
         'name' => 'string',
         'email' => 'string',
+        'mobile' => 'string',
+        'is_social' => 'string',
+        'uid' => 'string',
         'password' => 'string',
         'api_token' => 'string',
         'device_token' => 'string',
-        'remember_token' => 'string'
+        'remember_token' => 'string',
+        'role' => 'string'
     ];
     /**
      * New Attributes

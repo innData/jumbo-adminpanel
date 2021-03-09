@@ -13,7 +13,9 @@ use App\Criteria\Users\DriversOfMarketCriteria;
 use App\Events\UserRoleChangedEvent;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use APP\Models\DeviceInformation;
 use App\Repositories\CustomFieldRepository;
+use App\Repositories\DeviceInformationRepository;
 use App\Repositories\RoleRepository;
 use App\Repositories\UploadRepository;
 use App\Repositories\UserRepository;
@@ -35,18 +37,41 @@ class UserAPIController extends Controller
     private $uploadRepository;
     private $roleRepository;
     private $customFieldRepository;
+    private $deviceinfoRepository;
 
     /**
      * Create a new controller instance.
      *
      * @return void
      */
-    public function __construct(UserRepository $userRepository, UploadRepository $uploadRepository, RoleRepository $roleRepository, CustomFieldRepository $customFieldRepo)
+    public function __construct(UserRepository $userRepository, UploadRepository $uploadRepository, RoleRepository $roleRepository, CustomFieldRepository $customFieldRepo, DeviceInformationRepository $deviceinfoRepo)
     {
         $this->userRepository = $userRepository;
         $this->uploadRepository = $uploadRepository;
         $this->roleRepository = $roleRepository;
         $this->customFieldRepository = $customFieldRepo;
+         $this->deviceinfoRepository = $deviceinfoRepo;
+    }
+
+    function checkuser(Request $request)
+    {   
+        $this->validate($request, [
+            'email' => 'required'
+        ]);
+        $loginId = $request->input('email');
+        $contains = strpos($loginId, '@');
+        $field = 'email';
+        if(!$contains){
+            $field = 'mobile';
+        }
+        $user = $this->userRepository->findByField($field, $request->input('email'))->first();
+
+        if (!$user) {
+            return $this->sendError('User not found', 401);
+        }
+
+        return $this->sendResponse($user, 'User retrieved successfully');
+
     }
 
     function login(Request $request)
@@ -71,8 +96,29 @@ class UserAPIController extends Controller
         }
 
     }
+    
+    function deviceinformation(Request $request)
+    {
+        
+       try{ 
+       $deviceinfo = new DeviceInformation;
+            $deviceinfo->user_id = $request->input('user_id');
+            $deviceinfo->device_type = $request->input('device_type');
+            $deviceinfo->model = $request->input('model');
+            $deviceinfo->manufacture = $request->input('manufacture');
+            $deviceinfo->os_version = $request->input('os_version');
+            $deviceinfo->screen_height = $request->input('screen_height');
+            $deviceinfo->screen_width = $request->input('screen_width');
+            $deviceinfo->brand = $request->input('brand');
+            $deviceinfo->save();
+       } catch (\Exception $e) {
+            return $this->sendError($e->getMessage(), 401);
+        }
 
-    /**
+
+        return $this->sendResponse($deviceinfo, 'Device Information stored successfully');
+    }
+/**
      * Create a new user instance after a valid registration.
      *
      * @param array $data
@@ -106,7 +152,7 @@ class UserAPIController extends Controller
 
         return $this->sendResponse($user, 'User retrieved successfully');
     }
-
+    
     function logout(Request $request)
     {
         $user = $this->userRepository->findByField('api_token', $request->input('api_token'))->first();
